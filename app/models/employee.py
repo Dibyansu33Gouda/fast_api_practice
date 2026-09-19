@@ -4,7 +4,7 @@ from app.db.base import Base
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.models.departments import Department00
+    from app.models.departments import Department
 
 class Employee(Base):
     __tablename__="employees"

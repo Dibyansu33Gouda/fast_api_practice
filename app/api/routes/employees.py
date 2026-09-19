@@ -22,9 +22,44 @@ async  def create_employee(payload:EmployeeCreate , session:AsyncSession = Depen
     return emplyee
 
 @router.get("/",response_model=list[EmployeeREad])
-def list_employee(session:AsyncSession = Depends(get_session)):
+async def list_employee(session:AsyncSession = Depends(get_session)):
     result= await session.execute(Select(Employee))
     return result.scalars().all()
+    return result.scalars().all()
 
-@router.get()
+@router.get("/{employee_id}",response_model=EmployeeREad)
+async def get_employee(employee_id:int , session: AsyncSession = Depends(get_session)):
+    employee = await session.get(Employee , employee_id)
+    if employee is None:
+        raise HTTPException(status_code=404 , detail="employee doesn't exist")
+        
+    return employee
+   
+@router.put("/{employee_id}",response_model=EmployeeREad) 
+async def update_employee(employee_id:int , 
+                    payload:EmployeeCreate , 
+                    session: AsyncSession = Depends(get_session)
+                    ):
+                        employee=await session.get(Employee , employee_id)
+                        if employee is None:
+                            raise HTTPException(status_code=404 , detail="employee not found ")
+                        
+                        department=await session.get(Department , payload.department_id)
+                        if department is None:
+                            raise HTTPException(status_code=404 , detail="department not found")
+                        employee.name=payload.name
+                        employee.email=payload.email
+                        employee.department_id=payload.department_id                            
+
+                        await session.commit()
+                        await session.refresh(employee)
+                        return employee
+@router.delete("/{employee_id}", status_code=204)
+async def delete_employee(employee_id: int, session: AsyncSession = Depends(get_session)):
+    employee = await session.get(Employee, employee_id)
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    await session.delete(employee)
+    await session.commit()                   
+
     
