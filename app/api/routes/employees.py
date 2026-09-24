@@ -1,6 +1,7 @@
 from fastapi import FastAPI , HTTPException , Depends, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import Select
+from sqlalchemy.orm import selectinload
 
 from app.db.session import get_session
 from app.models.employee import Employee
@@ -23,16 +24,23 @@ async  def create_employee(payload:EmployeeCreate , session:AsyncSession = Depen
 
 @router.get("/",response_model=list[EmployeeREad])
 async def list_employee(session:AsyncSession = Depends(get_session)):
-    result= await session.execute(Select(Employee))
-    return result.scalars().all()
-    return result.scalars().all()
+    result=await session.execute(
+        Select(Employee).options(selectinload(Employee.department))
+    )
+    employees=result.scalars().all()
+    return employees
 
 @router.get("/{employee_id}",response_model=EmployeeREad)
 async def get_employee(employee_id:int , session: AsyncSession = Depends(get_session)):
-    employee = await session.get(Employee , employee_id)
+    result = await session.execute(
+        Select(Employee)
+        .where(Employee.id == employee_id)
+        .options(selectinload(Employee.department))
+    )
+    employee = result.scalars().first()
     if employee is None:
-        raise HTTPException(status_code=404 , detail="employee doesn't exist")
-        
+        raise HTTPException(status_code=404, detail="employee doesn't exist")
+
     return employee
    
 @router.put("/{employee_id}",response_model=EmployeeREad) 
