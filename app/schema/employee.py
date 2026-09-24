@@ -1,8 +1,8 @@
-from pydantic import BaseModel , EmailStr , ConfigDict
+from pydantic import BaseModel , EmailStr , ConfigDict , Field
 from .department import DepartmentShow
 
 class EmployeeCreate(BaseModel):
-    name: str
+    name: str = Field(min_length=1 , max_length=100)
     email: EmailStr
     department_id: int
 

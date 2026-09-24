@@ -16,10 +16,10 @@ async  def create_employee(payload:EmployeeCreate , session:AsyncSession = Depen
     department= await session.get(Department , payload.department_id)
     if department is None:
         raise HTTPException(status_code=404 , detail="Department not found")
-    emplyee=Employee(name=payload.name , email=payload.email , department_id=payload.department_id)
+    emplyee=Employee(**payload.model_dump())
     session.add(emplyee)
     await session.commit()
-    await session.refresh(emplyee)
+    await session.refresh(emplyee,attribute_names=['department'])
     return emplyee
 
 @router.get("/",response_model=list[EmployeeREad])
