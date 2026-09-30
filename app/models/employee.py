@@ -13,7 +13,7 @@ class Employee(Base):
     name: Mapped[str]=mapped_column(String(100))
     email: Mapped[str]=mapped_column(String(100),unique=True)
     department_id:Mapped[int]=mapped_column(ForeignKey("departments.id"))
-    phone_number : Mapped[str | None]=mapped_column(String(20) , nullable=False)
+    phone_number : Mapped[str | None]=mapped_column(String(20) , nullable=True)
 
     department:Mapped["Department"]=relationship(back_populates="employees")
     
