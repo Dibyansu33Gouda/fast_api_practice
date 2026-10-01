@@ -1,6 +1,8 @@
-from fastapi import FastAPI , APIRouter , Depends , HTTPException , status  
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession 
 from sqlalchemy import select 
+
+from app.dependencies import get_department_or_404
 from app.db.session import get_session
 from app.models.departments import Department
 from app.schema.department import DepartmentCreate , DepartmentShow
@@ -25,32 +27,23 @@ async def list_Department(session:AsyncSession = Depends(get_session)):
 
 
 @router.get("/{department_id}",response_model=DepartmentShow)
-async def get_department(department_id:int , session:AsyncSession = Depends(get_session)):
-   department=await session.get(Department , department_id)
-   if not department:
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND , detail="Department not found")
+async def get_department(department: Department = Depends(get_department_or_404)):
    return department
 
 @router.put("/{department_id}" , response_model=DepartmentShow)
-async def update_department(department_id:int , 
-                            payload:DepartmentCreate,
-                            session:AsyncSession = Depends(get_session)):
-   department=await session.get(Department , department_id)
-   if department is None:
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND , detail="Department not found")
+async def update_department(payload:DepartmentCreate,
+                            session:AsyncSession = Depends(get_session),
+                            department: Department = Depends(get_department_or_404)):
    department.name = payload.name
    await session.commit()
    await session.refresh(department)
    return department
 
 @router.delete("/{department_id}" , status_code=204)
-async def delete_Department(department_id:int ,
-                            session:AsyncSession = Depends(get_session)
+async def delete_Department(session:AsyncSession = Depends(get_session),
+                            department: Department = Depends(get_department_or_404)
                             
                         ):
-   department=await session.get(Department,department_id)
-   if department is None:
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
    await session.delete(department)
    await session.commit()
 

@@ -1,21 +1,19 @@
-from fastapi import FastAPI , HTTPException , Depends, APIRouter
+from fastapi import Depends, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Select
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.dependencies import get_department_or_404, get_employee_or_404
 from app.db.session import get_session
 from app.models.employee import Employee
 from app.schema.employee import EmployeeCreate , EmployeeREad
-from app.models.departments import Department
 
 
 router = APIRouter(prefix="/employees" , tags=["employees"])
 
 @router.post("/",response_model=EmployeeREad , status_code=201)
 async  def create_employee(payload:EmployeeCreate , session:AsyncSession = Depends(get_session)):
-    department= await session.get(Department , payload.department_id)
-    if department is None:
-        raise HTTPException(status_code=404 , detail="Department not found")
+    await get_department_or_404(payload.department_id, session)
     emplyee=Employee(**payload.model_dump())
     session.add(emplyee)
     await session.commit()
@@ -25,48 +23,28 @@ async  def create_employee(payload:EmployeeCreate , session:AsyncSession = Depen
 @router.get("/",response_model=list[EmployeeREad])
 async def list_employee(session:AsyncSession = Depends(get_session)):
     result=await session.execute(
-        Select(Employee).options(selectinload(Employee.department))
+        select(Employee).options(selectinload(Employee.department))
     )
     employees=result.scalars().all()
     return employees
 
 @router.get("/{employee_id}",response_model=EmployeeREad)
-async def get_employee(employee_id:int , session: AsyncSession = Depends(get_session)):
-    result = await session.execute(
-        Select(Employee)
-        .where(Employee.id == employee_id)
-        .options(selectinload(Employee.department))
-    )
-    employee = result.scalars().first()
-    if employee is None:
-        raise HTTPException(status_code=404, detail="employee doesn't exist")
-
+async def get_employee(employee: Employee = Depends(get_employee_or_404)):
     return employee
    
 @router.put("/{employee_id}",response_model=EmployeeREad) 
-async def update_employee(employee_id:int , 
-                    payload:EmployeeCreate , 
-                    session: AsyncSession = Depends(get_session)
+async def update_employee(payload:EmployeeCreate , 
+                    session: AsyncSession = Depends(get_session),
+                    employee: Employee = Depends(get_employee_or_404)
                     ):
-                        employee=await session.get(Employee , employee_id)
-                        if employee is None:
-                            raise HTTPException(status_code=404 , detail="employee not found ")
-                        
-                        department=await session.get(Department , payload.department_id)
-                        if department is None:
-                            raise HTTPException(status_code=404 , detail="department not found")
                         employee.name=payload.name
                         employee.email=payload.email
-                        employee.department_id=payload.department_id                            
+                        employee.department = await get_department_or_404(payload.department_id, session)
 
                         await session.commit()
-                        await session.refresh(employee)
                         return employee
 @router.delete("/{employee_id}", status_code=204)
-async def delete_employee(employee_id: int, session: AsyncSession = Depends(get_session)):
-    employee = await session.get(Employee, employee_id)
-    if employee is None:
-        raise HTTPException(status_code=404, detail="Employee not found")
+async def delete_employee(employee: Employee = Depends(get_employee_or_404), session:AsyncSession = Depends(get_session)):
     await session.delete(employee)
     await session.commit()                   
 
